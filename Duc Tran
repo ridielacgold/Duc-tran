@@ -1,1 +1,93 @@
 
+-- [[ GEMINI HUB - VERSION 2.0 MOBILE ]] --
+
+local Player = game.Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+
+-- 1. KHỞI TẠO GIAO DIỆN
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local UIListLayout = Instance.new("UIListLayout")
+local Title = Instance.new("TextLabel")
+local ToggleBtn = Instance.new("TextButton")
+
+ScreenGui.Parent = game.CoreGui
+ScreenGui.Name = "GeminiHubV2"
+
+-- Nút MENU nhỏ để đóng/mở
+ToggleBtn.Parent = ScreenGui
+ToggleBtn.Size = UDim2.new(0, 50, 0, 30)
+ToggleBtn.Position = UDim2.new(0, 5, 0, 5)
+ToggleBtn.Text = "MENU"
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+ToggleBtn.TextColor3 = Color3.new(1,1,1)
+ToggleBtn.Draggable = true
+
+-- Khung chính
+MainFrame.Parent = ScreenGui
+MainFrame.Visible = true
+MainFrame.Size = UDim2.new(0, 160, 0, 200)
+MainFrame.Position = UDim2.new(0.5, -80, 0.5, -100)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+Title.Parent = MainFrame
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Text = "GEMINI V2"
+Title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+Title.TextColor3 = Color3.new(1,1,1)
+
+UIListLayout.Parent = MainFrame
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 5)
+
+-- Hàm tạo nút nhanh (Helper Function)
+local function CreateButton(name, callback)
+    local btn = Instance.new("TextButton")
+    btn.Parent = MainFrame
+    btn.Size = UDim2.new(1, -10, 0, 35)
+    btn.Text = name
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+-- 2. CÁC CHỨC NĂNG CHÍNH
+
+-- Chức năng 1: Auto Attack (local args = {
+	0.5
+}
+game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Net"):WaitForChild("RE/RegisterAttack"):FireServer(unpack(args))
+)
+_G.AutoAttack = false
+local attackBtn = CreateButton("Auto Attack: OFF", function()
+    _G.AutoAttack = not _G.AutoAttack
+    script.Parent.Text = _G.AutoAttack and "Auto Attack: ON" or "Auto Attack: OFF" -- Lỗi nhẹ chỗ này nếu copy, sửa thành:
+end)
+-- Sửa lại logic nút bấm cho chuẩn:
+attackBtn.MouseButton1Click:Connect(function()
+    if _G.AutoAttack then
+        attackBtn.Text = "Auto Attack: ON"
+        attackBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        task.spawn(function()
+            while _G.AutoAttack do
+                local args = { 0.5 }
+                game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Net"):WaitForChild("RE/RegisterAttack"):FireServer(unpack(args))
+                task.wait(0.1)
+            end
+        end)
+    else
+        attackBtn.Text = "Auto Attack: OFF"
+        attackBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    end
+end)
+
+-- Đóng mở Menu
+ToggleBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+print("Source V2 GitHub Loaded!")
