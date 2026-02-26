@@ -1,85 +1,57 @@
--- [[ GEMINI HUB - VERSION 2.0 FIXED ]] --
-
+-- [[ GEMINI HUB - VERSION 3.0 FINAL ]] --
 local Player = game.Players.LocalPlayer
 
--- 1. TỰ ĐỘNG CẦM COMBAT (EQUIP)
+-- Hàm tự động cầm vũ khí
 local function EquipWeapon()
     pcall(function()
-        local args = { true }
-        -- Lệnh bạn vừa tìm được để cầm Combat
-        Player.Character:WaitForChild("Combat"):WaitForChild("EquipEvent"):FireServer(unpack(args))
+        local tool = Player.Backpack:FindFirstChild("Combat") or Player.Character:FindFirstChild("Combat")
+        if tool and not Player.Character:FindFirstChild(tool.Name) then
+            Player.Character.Humanoid:EquipTool(tool)
+        end
     end)
 end
 
--- 2. KHỞI TẠO GIAO DIỆN
-local ScreenGui = Instance.new("ScreenGui")
-local MainFrame = Instance.new("Frame")
-local Title = Instance.new("TextLabel")
-local ToggleBtn = Instance.new("TextButton")
+-- GIAO DIỆN
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 200, 0, 100)
+MainFrame.Position = UDim2.new(0.5, -100, 0.5, -50)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 
-ScreenGui.Parent = game.CoreGui
-ScreenGui.Name = "GeminiHubV2"
-
--- Nút đóng/mở Menu
-ToggleBtn.Parent = ScreenGui
-ToggleBtn.Size = UDim2.new(0, 60, 0, 30)
-ToggleBtn.Position = UDim2.new(0, 10, 0, 10)
-ToggleBtn.Text = "MENU"
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-ToggleBtn.TextColor3 = Color3.new(1,1,1)
-ToggleBtn.Draggable = true
-
--- Khung chính
-MainFrame.Parent = ScreenGui
-MainFrame.Size = UDim2.new(0, 180, 0, 120)
-MainFrame.Position = UDim2.new(0.5, -90, 0.5, -60)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MainFrame.Active = true
-MainFrame.Draggable = true
-
-Title.Parent = MainFrame
-Title.Size = UDim2.new(1, 0, 0, 35)
-Title.Text = "GEMINI V2 - BLOX"
-Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-Title.TextColor3 = Color3.new(1,1,1)
-
--- NÚT BẬT/TẮT AUTO FARM
-local AttackBtn = Instance.new("TextButton")
-AttackBtn.Parent = MainFrame
-AttackBtn.Size = UDim2.new(0, 160, 0, 45)
-AttackBtn.Position = UDim2.new(0, 10, 0, 50)
-AttackBtn.Text = "Auto Attack: OFF"
-AttackBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-AttackBtn.TextColor3 = Color3.new(1,1,1)
+local Btn = Instance.new("TextButton", MainFrame)
+Btn.Size = UDim2.new(1, -20, 1, -20)
+Btn.Position = UDim2.new(0, 10, 0, 10)
+Btn.Text = "SIEU AUTO ATTACK: OFF"
+Btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Btn.TextColor3 = Color3.new(1,1,1)
 
 _G.AutoFarm = false
-AttackBtn.MouseButton1Click:Connect(function()
+Btn.MouseButton1Click:Connect(function()
     _G.AutoFarm = not _G.AutoFarm
+    Btn.Text = _G.AutoFarm and "AUTO ATTACK: ON" or "AUTO ATTACK: OFF"
+    Btn.BackgroundColor3 = _G.AutoFarm and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(50, 50, 50)
+    
     if _G.AutoFarm then
-        AttackBtn.Text = "Auto Attack: ON"
-        AttackBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
-        
-        -- Chạy vòng lặp đánh
         task.spawn(function()
             while _G.AutoFarm do
-                EquipWeapon() -- Tự cầm vũ khí mỗi khi đánh
-                
-                local args = { 1 } -- Lệnh đánh bạn vừa tìm
                 pcall(function()
-                    game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Net"):WaitForChild("RE/RegisterAttack"):FireServer(unpack(args))
+                    EquipWeapon() -- Cầm vũ khí
+                    
+                    -- LỆNH REGISTERHIT BẠN VỪA TÌM
+                    -- Tìm bất kỳ con Bandit nào ở gần để đánh vào RightUpperLeg
+                    for _, v in pairs(game.Workspace.Enemies:GetChildren()) do
+                        if v.Name == "Bandit" and v:FindFirstChild("RightUpperLeg") then
+                            local args = {
+                                [1] = v.RightUpperLeg, -- Đánh vào chân phải quái
+                                [2] = {},
+                                [4] = "058e7a71" -- MÃ BẢO MẬT QUAN TRỌNG
+                            }
+                            game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Net"):WaitForChild("RE/RegisterHit"):FireServer(unpack(args))
+                        end
+                    end
                 end)
-                
-                task.wait(0.15) -- Thời gian nghỉ giữa các lần đánh
+                task.wait(0.1) -- Tốc độ cực nhanh
             end
         end)
-    else
-        AttackBtn.Text = "Auto Attack: OFF"
-        AttackBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
     end
 end)
-
-ToggleBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-end)
-
-print("Code moi TranDuc da load!") -- Kiểm tra trong Delta Console
