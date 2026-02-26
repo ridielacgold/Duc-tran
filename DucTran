@@ -1,87 +1,85 @@
--- [[ GEMINI HUB - VERSION 2.0 MOBILE ]] --
+-- [[ GEMINI HUB - VERSION 2.0 FIXED ]] --
 
 local Player = game.Players.LocalPlayer
-local Character = Player.Character or Player.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
 
--- 1. KHỞI TẠO GIAO DIỆN
+-- 1. TỰ ĐỘNG CẦM COMBAT (EQUIP)
+local function EquipWeapon()
+    pcall(function()
+        local args = { true }
+        -- Lệnh bạn vừa tìm được để cầm Combat
+        Player.Character:WaitForChild("Combat"):WaitForChild("EquipEvent"):FireServer(unpack(args))
+    end)
+end
+
+-- 2. KHỞI TẠO GIAO DIỆN
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
-local UIListLayout = Instance.new("UIListLayout")
 local Title = Instance.new("TextLabel")
 local ToggleBtn = Instance.new("TextButton")
 
 ScreenGui.Parent = game.CoreGui
 ScreenGui.Name = "GeminiHubV2"
 
--- Nút MENU nhỏ để đóng/mở
+-- Nút đóng/mở Menu
 ToggleBtn.Parent = ScreenGui
-ToggleBtn.Size = UDim2.new(0, 50, 0, 30)
-ToggleBtn.Position = UDim2.new(0, 5, 0, 5)
+ToggleBtn.Size = UDim2.new(0, 60, 0, 30)
+ToggleBtn.Position = UDim2.new(0, 10, 0, 10)
 ToggleBtn.Text = "MENU"
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
 ToggleBtn.TextColor3 = Color3.new(1,1,1)
 ToggleBtn.Draggable = true
 
 -- Khung chính
 MainFrame.Parent = ScreenGui
-MainFrame.Visible = true
-MainFrame.Size = UDim2.new(0, 160, 0, 150)
-MainFrame.Position = UDim2.new(0.5, -80, 0.5, -75)
+MainFrame.Size = UDim2.new(0, 180, 0, 120)
+MainFrame.Position = UDim2.new(0.5, -90, 0.5, -60)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.Active = true
 MainFrame.Draggable = true
 
 Title.Parent = MainFrame
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "GEMINI V2"
-Title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Text = "GEMINI V2 - BLOX"
+Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 Title.TextColor3 = Color3.new(1,1,1)
 
-UIListLayout.Parent = MainFrame
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 5)
+-- NÚT BẬT/TẮT AUTO FARM
+local AttackBtn = Instance.new("TextButton")
+AttackBtn.Parent = MainFrame
+AttackBtn.Size = UDim2.new(0, 160, 0, 45)
+AttackBtn.Position = UDim2.new(0, 10, 0, 50)
+AttackBtn.Text = "Auto Attack: OFF"
+AttackBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+AttackBtn.TextColor3 = Color3.new(1,1,1)
 
--- Hàm tạo nút nhanh
-local function CreateButton(name)
-    local btn = Instance.new("TextButton")
-    btn.Parent = MainFrame
-    btn.Size = UDim2.new(1, -10, 0, 35)
-    btn.Text = name
-    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    btn.TextColor3 = Color3.new(1,1,1)
-    return btn
-end
-
--- 2. CHỨC NĂNG AUTO ATTACK
-_G.AutoAttack = false
-local attackBtn = CreateButton("Auto Attack: OFF")
-
-attackBtn.MouseButton1Click:Connect(function()
-    _G.AutoAttack = not _G.AutoAttack
-    
-    if _G.AutoAttack then
-        attackBtn.Text = "Auto Attack: ON"
-        attackBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+_G.AutoFarm = false
+AttackBtn.MouseButton1Click:Connect(function()
+    _G.AutoFarm = not _G.AutoFarm
+    if _G.AutoFarm then
+        AttackBtn.Text = "Auto Attack: ON"
+        AttackBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
+        
+        -- Chạy vòng lặp đánh
         task.spawn(function()
-            while _G.AutoAttack do
-                -- ĐOẠN CODE BẠN BẮT ĐƯỢC ĐÃ ĐƯỢC ĐƯA VÀO ĐÚNG CHỖ
-                local args = { 0.5 }
+            while _G.AutoFarm do
+                EquipWeapon() -- Tự cầm vũ khí mỗi khi đánh
+                
+                local args = { 1 } -- Lệnh đánh bạn vừa tìm
                 pcall(function()
                     game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Net"):WaitForChild("RE/RegisterAttack"):FireServer(unpack(args))
                 end)
-                task.wait(0.1)
+                
+                task.wait(0.15) -- Thời gian nghỉ giữa các lần đánh
             end
         end)
     else
-        attackBtn.Text = "Auto Attack: OFF"
-        attackBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        AttackBtn.Text = "Auto Attack: OFF"
+        AttackBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
     end
 end)
 
--- Đóng mở Menu
 ToggleBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
-print("Source V2 Fixed & Loaded!")
+print("Code moi TranDuc da load!") -- Kiểm tra trong Delta Console
