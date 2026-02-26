@@ -1,4 +1,4 @@
--- [[ GEMINI HUB - VERSION 3.0 FINAL ]] --
+-- [[ GEMINI HUB - VERSION 3.5 AUTO KILL ]] --
 local Player = game.Players.LocalPlayer
 
 -- Hàm tự động cầm vũ khí
@@ -21,36 +21,47 @@ MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 local Btn = Instance.new("TextButton", MainFrame)
 Btn.Size = UDim2.new(1, -20, 1, -20)
 Btn.Position = UDim2.new(0, 10, 0, 10)
-Btn.Text = "SIEU AUTO ATTACK: OFF"
+Btn.Text = "AUTO KILL: OFF"
 Btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 Btn.TextColor3 = Color3.new(1,1,1)
 
 _G.AutoFarm = false
 Btn.MouseButton1Click:Connect(function()
     _G.AutoFarm = not _G.AutoFarm
-    Btn.Text = _G.AutoFarm and "AUTO ATTACK: ON" or "AUTO ATTACK: OFF"
-    Btn.BackgroundColor3 = _G.AutoFarm and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(50, 50, 50)
+    Btn.Text = _G.AutoFarm and "AUTO KILL: ON" or "AUTO KILL: OFF"
+    Btn.BackgroundColor3 = _G.AutoFarm and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(50, 50, 50)
     
     if _G.AutoFarm then
         task.spawn(function()
             while _G.AutoFarm do
                 pcall(function()
-                    EquipWeapon() -- Cầm vũ khí
+                    EquipWeapon()
                     
-                    -- LỆNH REGISTERHIT BẠN VỪA TÌM
-                    -- Tìm bất kỳ con Bandit nào ở gần để đánh vào RightUpperLeg
+                    -- Tìm quái gần nhất và còn sống
                     for _, v in pairs(game.Workspace.Enemies:GetChildren()) do
-                        if v.Name == "Bandit" and v:FindFirstChild("RightUpperLeg") then
-                            local args = {
-                                [1] = v.RightUpperLeg, -- Đánh vào chân phải quái
-                                [2] = {},
-                                [4] = "058e7a71" -- MÃ BẢO MẬT QUAN TRỌNG
-                            }
-                            game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Net"):WaitForChild("RE/RegisterHit"):FireServer(unpack(args))
+                        local humanoid = v:FindFirstChild("Humanoid")
+                        local root = v:FindFirstChild("HumanoidRootPart")
+                        
+                        -- KIỂM TRA: Nếu có quái, có máu và máu > 0
+                        if humanoid and root and humanoid.Health > 0 then
+                            -- Kiểm tra khoảng cách (dưới 30 mét)
+                            if (root.Position - Player.Character.HumanoidRootPart.Position).Magnitude < 30 then
+                                
+                                -- Vòng lặp đánh con quái này cho đến khi nó chết hoặc mình tắt Auto
+                                repeat
+                                    local args = {
+                                        [1] = v:FindFirstChild("RightUpperLeg") or root,
+                                        [2] = {},
+                                        [4] = "058e7a71" -- Mã bảo mật bạn bắt được
+                                    }
+                                    game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Net"):WaitForChild("RE/RegisterHit"):FireServer(unpack(args))
+                                    task.wait(0.05) -- Tốc độ đánh cực nhanh
+                                until humanoid.Health <= 0 or not _G.AutoFarm or not v.Parent
+                            end
                         end
                     end
                 end)
-                task.wait(0.1) -- Tốc độ cực nhanh
+                task.wait(0.5) -- Quét tìm quái mới mỗi 0.5 giây
             end
         end)
     end
