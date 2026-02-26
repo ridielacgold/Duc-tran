@@ -1,68 +1,79 @@
--- [[ GEMINI HUB - VERSION 3.5 AUTO KILL ]] --
+-- [[ GEMINI HUB - VERSION 5.0 COMPACT ]] --
 local Player = game.Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
 
--- Hàm tự động cầm vũ khí
-local function EquipWeapon()
-    pcall(function()
-        local tool = Player.Backpack:FindFirstChild("Combat") or Player.Character:FindFirstChild("Combat")
-        if tool and not Player.Character:FindFirstChild(tool.Name) then
-            Player.Character.Humanoid:EquipTool(tool)
-        end
-    end)
-end
-
--- GIAO DIỆN
+-- 1. GIAO DIỆN (SCREEN GUI)
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "GeminiV5"
+
+-- NÚT NHỎ ĐỂ MỞ/ĐÓNG (Nằm ở góc trái hoặc bạn có thể kéo đi chỗ khác)
+local OpenBtn = Instance.new("TextButton", ScreenGui)
+OpenBtn.Size = UDim2.new(0, 50, 0, 30)
+OpenBtn.Position = UDim2.new(0, 10, 0, 150)
+OpenBtn.Text = "OPEN"
+OpenBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+OpenBtn.TextColor3 = Color3.new(1,1,1)
+OpenBtn.Draggable = true -- Bạn có thể kéo nút này đi bất cứ đâu cho đỡ vướng
+
+-- KHUNG MENU CHÍNH
 local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 200, 0, 100)
-MainFrame.Position = UDim2.new(0.5, -100, 0.5, -50)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.Size = UDim2.new(0, 200, 0, 160)
+MainFrame.Position = UDim2.new(0.5, -100, 0.5, -80)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.Visible = false -- Mặc định là ẩn đi cho đỡ vướng
+MainFrame.Active = true
+MainFrame.Draggable = true
 
-local Btn = Instance.new("TextButton", MainFrame)
-Btn.Size = UDim2.new(1, -20, 1, -20)
-Btn.Position = UDim2.new(0, 10, 0, 10)
-Btn.Text = "AUTO KILL: OFF"
-Btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-Btn.TextColor3 = Color3.new(1,1,1)
+local UIListLayout = Instance.new("UIListLayout", MainFrame)
+UIListLayout.Padding = UDim.new(0, 5)
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
+-- Tiêu đề Menu
+local Title = Instance.new("TextLabel", MainFrame)
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Text = "GEMINI V5"
+Title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Title.TextColor3 = Color3.new(1,1,1)
+
+-- NÚT AUTO FARM
+local AttackBtn = Instance.new("TextButton", MainFrame)
+AttackBtn.Size = UDim2.new(0, 180, 0, 45)
+AttackBtn.Text = "AUTO FARM: OFF"
+AttackBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+AttackBtn.TextColor3 = Color3.new(1,1,1)
+
+-- NÚT SPEED
+local SpeedBtn = Instance.new("TextButton", MainFrame)
+SpeedBtn.Size = UDim2.new(0, 180, 0, 45)
+SpeedBtn.Text = "SPEED: OFF"
+SpeedBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+SpeedBtn.TextColor3 = Color3.new(1,1,1)
+
+-- CHỨC NĂNG ĐÓNG/MỞ
+OpenBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+    OpenBtn.Text = MainFrame.Visible and "CLOSE" or "OPEN"
+end)
+
+-- LOGIC AUTO FARM (Dùng mã bảo mật bạn vừa lấy)
 _G.AutoFarm = false
-Btn.MouseButton1Click:Connect(function()
+AttackBtn.MouseButton1Click:Connect(function()
     _G.AutoFarm = not _G.AutoFarm
-    Btn.Text = _G.AutoFarm and "AUTO KILL: ON" or "AUTO KILL: OFF"
-    Btn.BackgroundColor3 = _G.AutoFarm and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(50, 50, 50)
+    AttackBtn.Text = _G.AutoFarm and "AUTO FARM: ON" or "AUTO FARM: OFF"
+    AttackBtn.BackgroundColor3 = _G.AutoFarm and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(60, 60, 60)
     
     if _G.AutoFarm then
         task.spawn(function()
             while _G.AutoFarm do
                 pcall(function()
-                    EquipWeapon()
+                    -- Luôn cầm vũ khí
+                    local tool = Player.Backpack:FindFirstChild("Combat") or Character:FindFirstChild("Combat")
+                    if tool and not Character:FindFirstChild(tool.Name) then Humanoid:EquipTool(tool) end
                     
-                    -- Tìm quái gần nhất và còn sống
+                    -- Combo Chống Văng
+                    game:GetService("ReplicatedStorage").Modules.Net["RE/RegisterAttack"]:FireServer(0.5)
+                    
                     for _, v in pairs(game.Workspace.Enemies:GetChildren()) do
-                        local humanoid = v:FindFirstChild("Humanoid")
-                        local root = v:FindFirstChild("HumanoidRootPart")
-                        
-                        -- KIỂM TRA: Nếu có quái, có máu và máu > 0
-                        if humanoid and root and humanoid.Health > 0 then
-                            -- Kiểm tra khoảng cách (dưới 30 mét)
-                            if (root.Position - Player.Character.HumanoidRootPart.Position).Magnitude < 30 then
-                                
-                                -- Vòng lặp đánh con quái này cho đến khi nó chết hoặc mình tắt Auto
-                                repeat
-                                    local args = {
-                                        [1] = v:FindFirstChild("RightUpperLeg") or root,
-                                        [2] = {},
-                                        [4] = "058e7a71" -- Mã bảo mật bạn bắt được
-                                    }
-                                    game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Net"):WaitForChild("RE/RegisterHit"):FireServer(unpack(args))
-                                    task.wait(0.05) -- Tốc độ đánh cực nhanh
-                                until humanoid.Health <= 0 or not _G.AutoFarm or not v.Parent
-                            end
-                        end
-                    end
-                end)
-                task.wait(0.5) -- Quét tìm quái mới mỗi 0.5 giây
-            end
-        end)
-    end
-end)
+                        if v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+                            if (v.Humanoid
