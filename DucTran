@@ -1,54 +1,56 @@
--- [[ GEMINI HUB - VERSION 6.1 NO MENU (AUTO ATTACK ONLY) ]] --
--- Tự động bật đánh và chống văng, không chỉnh tốc độ chạy
-
+-- [[ GEMINI HUB - VERSION 7.0 AUTO FLY FARM ]] --
 local Player = game.Players.LocalPlayer
-local Character = Player.Character or Player.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
+local RunService = game:GetService("RunService")
 
 -- Thông báo kích hoạt
 game.StarterGui:SetCore("SendNotification", {
-    Title = "Gemini V6.1";
-    Text = "Auto Farm đã bật (Tốc độ bình thường)";
+    Title = "Gemini V7.0";
+    Text = "Đang bay đến vị trí quái...";
     Duration = 5;
 })
 
--- 1. HÀM TỰ ĐỘNG CẦM VŨ KHÍ
-local function EquipWeapon()
-    pcall(function()
-        local tool = Player.Backpack:FindFirstChild("Combat") or Character:FindFirstChild("Combat")
-        if tool and not Character:FindFirstChild(tool.Name) then
-            Humanoid:EquipTool(tool)
-        end
-    end)
+-- Hàm ngăn nhân vật bị rơi hoặc bị rung khi bay
+local function StopFalling()
+    if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+        local velocity = Player.Character.HumanoidRootPart:FindFirstChild("VelocityHandler") or Instance.new("BodyVelocity")
+        velocity.Name = "VelocityHandler"
+        velocity.Parent = Player.Character.HumanoidRootPart
+        velocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        velocity.Velocity = Vector3.new(0, 0, 0)
+    end
 end
 
--- 2. VÒNG LẶP AUTO FARM CHỐNG VĂNG
+-- VÒNG LẶP CHÍNH: BAY VÀ ĐÁNH
 task.spawn(function()
     while true do
         pcall(function()
-            -- Luôn cầm vũ khí
-            EquipWeapon()
+            local Character = Player.Character
+            local Root = Character:FindFirstChild("HumanoidRootPart")
             
-            -- Lệnh vung tay để chống bị văng sát thương
-            game:GetService("ReplicatedStorage").Modules.Net["RE/RegisterAttack"]:FireServer(0.5)
-            
-            -- Tìm quái xung quanh và gây sát thương
+            -- Tìm con quái Bandit gần nhất
             for _, v in pairs(game.Workspace.Enemies:GetChildren()) do
                 if v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
-                    -- Khoảng cách đánh an toàn
-                    if (v.HumanoidRootPart.Position - Character.HumanoidRootPart.Position).Magnitude < 40 then
+                    
+                    -- LỆNH BAY: Giữ nhân vật ở trên đầu quái 6 mét
+                    repeat
+                        StopFalling()
+                        Root.CFrame = v.HumanoidRootPart.CFrame * CFrame.new(0, 15, 0) * CFrame.Angles(math.rad(-90), 0, 0)
+                        
+                        -- KẾT HỢP LỆNH ĐÁNH CỦA BẠN
+                        game:GetService("ReplicatedStorage").Modules.Net["RE/RegisterAttack"]:FireServer(0.5)
+                        
                         local args = {
-                            [1] = v:FindFirstChild("LeftHand") or v:FindFirstChild("RightUpperLeg") or v.HumanoidRootPart,
+                            [1] = v:FindFirstChild("LeftHand") or v.HumanoidRootPart,
                             [2] = {},
-                            [4] = "058e045b" -- Mã bảo mật bạn đã lấy
+                            [4] = "058e045b" -- Mã bảo mật của bạn
                         }
                         game:GetService("ReplicatedStorage").Modules.Net["RE/RegisterHit"]:FireServer(unpack(args))
-                    end
+                        
+                        task.wait(0.1)
+                    until v.Humanoid.Health <= 0 or not v.Parent
                 end
             end
         end)
-        task.wait(0.15) -- Tốc độ đánh mượt mà
+        task.wait(1) -- Đợi 1 giây để quét tìm quái mới
     end
 end)
-
-print("Script TranDuc V6.1 đã chạy ngầm!")
