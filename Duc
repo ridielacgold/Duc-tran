@@ -1,16 +1,12 @@
 --[[
-    SCRIPT BÁO THÔNG TIN ACCOUNT BLOX FRUIT
-    Tính năng: Gửi báo cáo đầy đủ về tài khoản đang chạy script qua Discord
-    Bao gồm: Tên, level, trái đang dùng, melee đã học, kiếm sở hữu, tiền, v.v.
-    
-    WEBHOOK ĐÃ ĐƯỢC TÍCH HỢP SẴN
+    BLOX FRUIT ACCOUNT INFO - FIXED VERSION
+    Đã sửa lỗi hiển thị melee, kiếm, trái cây
 --]]
 
--- ==================== CẤU HÌNH ====================
-local webhookUrl = "https://discord.com/api/webhooks/1470656522777399431/LscNzrJSAPIQk20MO1X9N_YbzWbM4Lnk0pr2Ypo2EyMw0aj3lbFNLRHmURh8hQJSoDjX"  -- ✅ WEBHOOK CỦA BẠN
+local webhookUrl = "https://discord.com/api/webhooks/1470656522777399431/LscNzrJSAPIQk20MO1X9N_YbzWbM4Lnk0pr2Ypo2EyMw0aj3lbFNLRHmURh8hQJSoDjX"
 
--- ================== HÀM GỬI DISCORD ==================
-local function sendToDiscord(title, description, fields, color)
+-- Hàm gửi webhook với embed đẹp
+local function sendEmbed(title, description, fields, color)
     local embed = {
         ["title"] = title,
         ["description"] = description,
@@ -18,9 +14,6 @@ local function sendToDiscord(title, description, fields, color)
         ["fields"] = fields or {},
         ["footer"] = {
             ["text"] = "Blox Fruit Account Info • " .. os.date("%H:%M:%S %d/%m/%Y"),
-        },
-        ["thumbnail"] = {
-            ["url"] = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. game.Players.LocalPlayer.UserId .. "&width=420&height=420&format=png"
         },
         ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
     }
@@ -32,167 +25,179 @@ local function sendToDiscord(title, description, fields, color)
     
     local jsonData = game:GetService("HttpService"):JSONEncode(data)
     
-    local requestTable = {
+    local requestData = {
         Url = webhookUrl,
         Method = "POST",
         Headers = {["Content-Type"] = "application/json"},
         Body = jsonData
     }
     
-    local success = false
     if syn and syn.request then
-        success = pcall(function() syn.request(requestTable) end)
+        syn.request(requestData)
     elseif http_request then
-        success = pcall(function() http_request(requestTable) end)
+        http_request(requestData)
     elseif request then
-        success = pcall(function() request(requestTable) end)
+        request(requestData)
     else
-        warn("❌ Executor không hỗ trợ webhook")
-        return false
+        print("❌ Không hỗ trợ webhook")
     end
-    
-    if success then
-        print("✅ Đã gửi thông tin account lên Discord")
-    else
-        warn("❌ Lỗi gửi webhook")
-    end
-    return success
 end
 
--- ================== LẤY THÔNG TIN MELEE ==================
-local function getMeleeInfo()
+-- Hàm lấy Melee thật sự
+local function getRealMelee()
     local meleeList = {}
     local player = game.Players.LocalPlayer
     
-    if player and player:FindFirstChild("Data") then
-        for _, skill in pairs(player.Data:GetChildren()) do
-            local skillName = skill.Name
-            -- Các loại melee phổ biến
-            if skillName:find("Melee") or skillName:find("Black") or skillName:find("Electro") or skillName:find("Dragon") or skillName:find("Superhuman") or skillName:find("Godhuman") then
-                table.insert(meleeList, skillName)
+    -- Tìm trong Fighter (nơi chứa melee)
+    if player:FindFirstChild("Fighter") then
+        for _, v in pairs(player.Fighter:GetChildren()) do
+            if v:IsA("StringValue") or v:IsA("NumberValue") then
+                local meleeName = v.Name
+                -- Lọc các tên melee hợp lệ
+                if meleeName ~= "Level" and meleeName ~= "Exp" then
+                    table.insert(meleeList, meleeName)
+                end
             end
         end
     end
     
-    if #meleeList > 0 then
-        return "```\n" .. table.concat(meleeList, "\n") .. "\n```"
-    else
-        return "```\nChưa có melee\n```"
+    -- Nếu không tìm thấy, thử tìm trong Data
+    if #meleeList == 0 and player:FindFirstChild("Data") then
+        for _, v in pairs(player.Data:GetChildren()) do
+            if v.Name:find("Melee") or v.Name:find("Black") or v.Name:find("Electro") or v.Name:find("Dragon") or v.Name:find("Superhuman") or v.Name:find("Godhuman") then
+                table.insert(meleeList, v.Name)
+            end
+        end
     end
+    
+    return meleeList
 end
 
--- ================== LẤY THÔNG TIN KIẾM ==================
-local function getSwordInfo()
+-- Hàm lấy Kiếm thật sự
+local function getRealSwords()
     local swordList = {}
-    local backpack = game.Players.LocalPlayer.Backpack
+    local player = game.Players.LocalPlayer
     
-    for _, item in pairs(backpack:GetChildren()) do
-        -- Lọc các item là kiếm (có thể dựa vào tên hoặc class)
-        if item:IsA("Tool") and (item.Name:find("Katana") or item.Name:find("Blade") or item.Name:find("Sword") or item.Name == "Yama" or item.Name == "Tushita" or item.Name == "Canvander" or item.Name == "Shisui" or item.Name == "Saddi" or item.Name == "Wando") then
+    -- Kiểm tra trong Backpack
+    for _, item in pairs(player.Backpack:GetChildren()) do
+        if item:IsA("Tool") then
+            -- Lọc các tool là kiếm (có thể dựa vào tên hoặc class)
             table.insert(swordList, item.Name)
         end
     end
     
-    if #swordList > 0 then
-        return "```\n" .. table.concat(swordList, "\n") .. "\n```"
-    else
-        return "```\nKhông có kiếm trong túi\n```"
-    end
-end
-
--- ================== LẤY THÔNG TIN TRÁI ĐANG DÙNG ==================
-local function getCurrentFruit()
-    local player = game.Players.LocalPlayer
-    local fruitName = "Không có"
-    
-    -- Kiểm tra trong trang bị chính
+    -- Kiểm tra trong Character (đang cầm)
     if player.Character then
         local equipped = player.Character:FindFirstChildOfClass("Tool")
-        if equipped and equipped:FindFirstChild("Fruit") then
-            fruitName = equipped.Name
+        if equipped and not table.find(swordList, equipped.Name) then
+            table.insert(swordList, equipped.Name .. " (đang cầm)")
         end
     end
     
-    return fruitName
+    return swordList
 end
 
--- ================== LẤY LEVEL ==================
-local function getLevel()
+-- Hàm lấy Trái đang dùng thật sự
+local function getRealFruit()
     local player = game.Players.LocalPlayer
-    if player and player:FindFirstChild("Data") and player.Data:FindFirstChild("Level") then
-        return player.Data.Level.Value
+    
+    -- Kiểm tra trong Character (đang cầm)
+    if player.Character then
+        local equipped = player.Character:FindFirstChildOfClass("Tool")
+        if equipped and (equipped.Name:find("Fruit") or equipped:FindFirstChild("Fruit")) then
+            return equipped.Name
+        end
     end
-    return "Unknown"
+    
+    -- Kiểm tra trong Backpack
+    for _, item in pairs(player.Backpack:GetChildren()) do
+        if item.Name:find("Fruit") or item:FindFirstChild("Fruit") then
+            return item.Name .. " (trong túi)"
+        end
+    end
+    
+    return "Không có trái"
 end
 
--- ================== LẤY BELI VÀ FRAGMENT ==================
-local function getCurrency()
+-- Hàm lấy thông tin chi tiết
+local function getDetailedInfo()
     local player = game.Players.LocalPlayer
+    local data = player:FindFirstChild("Data")
+    
+    -- Level
+    local level = "Unknown"
+    if data and data:FindFirstChild("Level") then
+        level = data.Level.Value
+    end
+    
+    -- Beli
     local beli = 0
-    local fragment = 0
-    
-    if player and player:FindFirstChild("Data") then
-        if player.Data:FindFirstChild("Beli") then
-            beli = player.Data.Beli.Value
-        end
-        if player.Data:FindFirstChild("Fragment") then
-            fragment = player.Data.Fragment.Value
-        end
+    if data and data:FindFirstChild("Beli") then
+        beli = data.Beli.Value
     end
     
-    return beli, fragment
-end
-
--- ================== LẤY THÔNG TIN PVP ==================
-local function getPVPInfo()
-    local player = game.Players.LocalPlayer
+    -- Fragment
+    local fragment = 0
+    if data and data:FindFirstChild("Fragment") then
+        fragment = data.Fragment.Value
+    end
+    
+    -- Bounty/Honor
     local bounty = 0
     local honor = 0
+    if data and data:FindFirstChild("Bounty") then
+        bounty = data.Bounty.Value
+    end
+    if data and data:FindFirstChild("Honor") then
+        honor = data.Honor.Value
+    end
     
-    if player and player:FindFirstChild("Data") then
-        if player.Data:FindFirstChild("Bounty") then
-            bounty = player.Data.Bounty.Value
-        end
-        if player.Data:FindFirstChild("Honor") then
-            honor = player.Data.Honor.Value
+    -- Stats (điểm chỉ số)
+    local stats = {}
+    if player:FindFirstChild("PlayerStats") then
+        for _, stat in pairs(player.PlayerStats:GetChildren()) do
+            if stat:IsA("NumberValue") then
+                table.insert(stats, stat.Name .. ": " .. stat.Value)
+            end
         end
     end
     
-    return bounty, honor
+    return level, beli, fragment, bounty, honor, stats
 end
 
--- ================== LẤY THỜI GIAN CHƠI ==================
-local function getPlayTime()
-    local player = game.Players.LocalPlayer
-    if player and player:FindFirstChild("Data") and player.Data:FindFirstChild("PlayTime") then
-        local seconds = player.Data.PlayTime.Value
-        local hours = math.floor(seconds / 3600)
-        local minutes = math.floor((seconds % 3600) / 60)
-        return string.format("%d giờ %d phút", hours, minutes)
-    end
-    return "Unknown"
-end
-
--- ================== GỬI BÁO CÁO ACCOUNT ==================
-local function sendAccountInfo()
-    local player = game.Players.LocalPlayer
-    local playerName = player.Name
-    local displayName = player.DisplayName
+-- Hàm chính
+local function main()
+    print("🚀 Đang lấy thông tin account...")
     
-    -- Lấy các thông tin
-    local level = getLevel()
-    local currentFruit = getCurrentFruit()
-    local meleeInfo = getMeleeInfo()
-    local swordInfo = getSwordInfo()
-    local beli, fragment = getCurrency()
-    local bounty, honor = getPVPInfo()
-    local playTime = getPlayTime()
+    local player = game.Players.LocalPlayer
+    local level, beli, fragment, bounty, honor, stats = getDetailedInfo()
+    local meleeList = getRealMelee()
+    local swordList = getRealSwords()
+    local currentFruit = getRealFruit()
+    
+    -- Xử lý hiển thị melee
+    local meleeText = "Chưa có melee"
+    if #meleeList > 0 then
+        meleeText = "```\n" .. table.concat(meleeList, "\n") .. "\n```"
+    end
+    
+    -- Xử lý hiển thị kiếm
+    local swordText = "Không có kiếm"
+    if #swordList > 0 then
+        swordText = "```\n" .. table.concat(swordList, "\n") .. "\n```"
+    end
+    
+    -- Xử lý stats
+    local statsText = "Không có thông tin"
+    if #stats > 0 then
+        statsText = "```\n" .. table.concat(stats, "\n") .. "\n```"
+    end
     
     -- Tạo fields cho embed
     local fields = {
         {
             name = "👤 **THÔNG TIN CƠ BẢN**",
-            value = "```\nTên: " .. playerName .. " (" .. displayName .. ")\nLevel: " .. level .. "\nThời gian chơi: " .. playTime .. "\n```",
+            value = "```\nTên: " .. player.Name .. "\nLevel: " .. level .. "\n```",
             inline = false
         },
         {
@@ -207,44 +212,36 @@ local function sendAccountInfo()
         },
         {
             name = "⚔️ **PVP**",
-            value = "```\nBounty/Honor: " .. string.format("%.0f", bounty) .. " / " .. string.format("%.0f", honor) .. "\n```",
+            value = "```\nBounty: " .. string.format("%.0f", bounty) .. "\nHonor: " .. string.format("%.0f", honor) .. "\n```",
             inline = true
         },
         {
             name = "💪 **MELEE ĐÃ HỌC**",
-            value = meleeInfo,
+            value = meleeText,
             inline = false
         },
         {
             name = "🗡️ **KIẾM TRONG TÚI**",
-            value = swordInfo,
+            value = swordText,
+            inline = false
+        },
+        {
+            name = "📊 **CHỈ SỐ (STATS)**",
+            value = statsText,
             inline = false
         }
     }
     
     -- Gửi thông báo
-    sendToDiscord(
+    sendEmbed(
         "📊 **BÁO CÁO TÀI KHOẢN BLOX FRUIT**",
-        "Thông tin chi tiết của **" .. playerName .. "**",
+        "Thông tin chi tiết của **" .. player.Name .. "**",
         fields,
         16738790
     )
+    
+    print("✅ Đã gửi thông tin! Kiểm tra Discord nhé!")
 end
 
--- ================== KHỞI CHẠY SCRIPT ==================
-local function main()
-    print("🚀 Đang khởi động Blox Fruit Account Info...")
-    print("📢 Webhook đã được cấu hình sẵn")
-    
-    -- Đợi game load
-    task.wait(3)
-    
-    -- Gửi thông tin account
-    task.spawn(sendAccountInfo)
-    
-    print("✅ Đã gửi yêu cầu báo cáo account!")
-    print("📱 Kiểm tra Discord để xem thông tin")
-end
-
--- Bắt đầu
+-- Chạy
 main()
