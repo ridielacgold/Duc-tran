@@ -1,56 +1,248 @@
--- [[ GEMINI HUB - VERSION 7.0 AUTO FLY FARM ]] --
-local Player = game.Players.LocalPlayer
-local RunService = game:GetService("RunService")
+--[[
+    SCRIPT BÁO VẬT PHẨM BLOX FRUIT (CHỈ BÁO TRÁI TRÊN 1M)
+    Tính năng:
+    1. Báo danh sách Melee đang có (chạy 1 lần khi khởi động)
+    2. Báo khi có kiếm Yama hoặc Tushita trong túi
+    3. Báo khi phát hiện trái ác quỷ có giá trị TỪ 1 TRIỆU trở lên
+    
+    WEBHOOK ĐÃ ĐƯỢC TÍCH HỢP SẴN
+--]]
 
--- Thông báo kích hoạt
-game.StarterGui:SetCore("SendNotification", {
-    Title = "Gemini V7.0";
-    Text = "Đang bay đến vị trí quái...";
-    Duration = 5;
-})
+-- ==================== CẤU HÌNH ====================
+local webhookUrl = "https://discord.com/api/webhooks/1470656522777399431/LscNzrJSAPIQk20MO1X9N_YbzWbM4Lnk0pr2Ypo2EyMw0aj3lbFNLRHmURh8hQJSoDjX"  -- ✅ WEBHOOK CỦA BẠN
+local minimumFruitPrice = 1000000  -- Chỉ báo trái từ 1 TRIỆU trở lên
 
--- Hàm ngăn nhân vật bị rơi hoặc bị rung khi bay
-local function StopFalling()
-    if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-        local velocity = Player.Character.HumanoidRootPart:FindFirstChild("VelocityHandler") or Instance.new("BodyVelocity")
-        velocity.Name = "VelocityHandler"
-        velocity.Parent = Player.Character.HumanoidRootPart
-        velocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-        velocity.Velocity = Vector3.new(0, 0, 0)
+-- ================== DANH SÁCH TRÁI TRÊN 1M ==================
+local rareFruits = {
+    ["Rumble-Fruit"] = true,
+    ["Quake-Fruit"] = true,
+    ["Human-Fruit"] = true,      -- Buddha
+    ["String-Fruit"] = true,
+    ["Diamond-Fruit"] = true,
+    ["Gravity-Fruit"] = true,
+    ["Love-Fruit"] = true,
+    ["Spider-Fruit"] = true,
+    ["Phoenix-Fruit"] = true,
+    ["Portal-Fruit"] = true,
+    ["Dragon-Fruit"] = true,
+    ["Venom-Fruit"] = true,
+    ["Shadow-Fruit"] = true,
+    ["Dough-Fruit"] = true,
+    ["Control-Fruit"] = true,
+    ["Soul-Fruit"] = true,
+    ["Leopard-Fruit"] = true,
+    ["Mammoth-Fruit"] = true,
+    ["T-Rex-Fruit"] = true,
+    ["Sound-Fruit"] = true
+}
+
+-- ================== BIẾN TOÀN CỤC ==================
+local notifiedFruits = {}  -- Tránh báo trùng
+local hasNotifiedMelee = false
+local hasNotifiedSwords = false
+
+-- ================== HÀM GỬI DISCORD ==================
+local function sendToDiscord(title, description, fields, color, ping)
+    local content = ping and "@everyone" or ""
+    
+    local embed = {
+        ["title"] = title,
+        ["description"] = description,
+        ["color"] = color or 16738790,
+        ["fields"] = fields or {},
+        ["footer"] = {
+            ["text"] = "Blox Fruit Notifier • " .. os.date("%H:%M:%S %d/%m/%Y"),
+        },
+        ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
+    }
+    
+    local data = {
+        ["content"] = content,
+        ["embeds"] = {embed}
+    }
+    
+    local jsonData = game:GetService("HttpService"):JSONEncode(data)
+    
+    local requestTable = {
+        Url = webhookUrl,
+        Method = "POST",
+        Headers = {["Content-Type"] = "application/json"},
+        Body = jsonData
+    }
+    
+    local success = false
+    if syn and syn.request then
+        success = pcall(function() syn.request(requestTable) end)
+    elseif http_request then
+        success = pcall(function() http_request(requestTable) end)
+    elseif request then
+        success = pcall(function() request(requestTable) end)
+    else
+        warn("❌ Executor không hỗ trợ webhook")
+        return false
+    end
+    
+    if success then
+        print("✅ Đã gửi thông báo: " .. title)
+    else
+        warn("❌ Lỗi gửi webhook")
+    end
+    return success
+end
+
+-- ================== KIỂM TRA MELEE ==================
+local function checkMelee()
+    if hasNotifiedMelee then return end
+    
+    local meleeSkills = {}
+    local player = game.Players.LocalPlayer
+    
+    -- Tìm trong kỹ năng của người chơi
+    if player and player:FindFirstChild("Data") then
+        for _, skill in pairs(player.Data:GetChildren()) do
+            local skillName = skill.Name
+            if skillName:find("Melee") or skillName:find("Black") or skillName:find("Electro") or skillName:find("Dragon") or skillName:find("Superhuman") then
+                table.insert(meleeSkills, skillName)
+            end
+        end
+    end
+    
+    -- Nếu có melee, gửi thông báo
+    if #meleeSkills > 0 then
+        local fields = {{
+            name = "💪 **MELEE ĐANG CÓ:**",
+            value = "```\n" .. table.concat(meleeSkills, "\n") .. "\n```",
+            inline = false
+        }}
+        sendToDiscord("📊 DANH SÁCH MELEE", "Các kỹ năng Melee hiện tại:", fields, 5763719, false)
+        hasNotifiedMelee = true
     end
 end
 
--- VÒNG LẶP CHÍNH: BAY VÀ ĐÁNH
-task.spawn(function()
-    while true do
-        pcall(function()
-            local Character = Player.Character
-            local Root = Character:FindFirstChild("HumanoidRootPart")
+-- ================== KIỂM TRA YAMA & TUSHITA ==================
+local function checkLegendarySwords()
+    if hasNotifiedSwords then return end
+    
+    local swords = {}
+    local backpack = game.Players.LocalPlayer.Backpack
+    
+    for _, item in pairs(backpack:GetChildren()) do
+        if item.Name == "Yama" or item.Name == "Tushita" or item.Name == "Canvander" then
+            table.insert(swords, item.Name)
+        end
+    end
+    
+    if #swords > 0 then
+        local fields = {{
+            name = "⚔️ **KIẾM HUYỀN THOẠI:**",
+            value = "```\n" .. table.concat(swords, "\n") .. "\n```",
+            inline = false
+        }}
+        sendToDiscord("🗡️ PHÁT HIỆN KIẾM LEGENDARY", "Bạn đang sở hữu:", fields, 16766720, true)
+        hasNotifiedSwords = true
+    end
+end
+
+-- ================== QUÉT TRÁI TRÊN 1M ==================
+local function scanForRareFruits()
+    while task.wait(3) do  -- Quét mỗi 3 giây
+        for _, obj in pairs(workspace:GetChildren()) do
+            -- Bỏ qua nếu đã thông báo rồi
+            if notifiedFruits[obj] then continue end
             
-            -- Tìm con quái Bandit gần nhất
-            for _, v in pairs(game.Workspace.Enemies:GetChildren()) do
-                if v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
-                    
-                    -- LỆNH BAY: Giữ nhân vật ở trên đầu quái 6 mét
-                    repeat
-                        StopFalling()
-                        Root.CFrame = v.HumanoidRootPart.CFrame * CFrame.new(0, 15, 0) * CFrame.Angles(math.rad(-90), 0, 0)
+            -- Kiểm tra có phải trái cây không
+            local isFruit = false
+            local fruitName = ""
+            local fruitPos = nil
+            
+            if obj:IsA("Tool") and obj:FindFirstChild("Handle") then
+                fruitName = obj.Name
+                fruitPos = obj.Handle.Position
+                isFruit = true
+            elseif obj.Name:find("Fruit") or obj.Name:find("fruit") then
+                fruitName = obj.Name
+                fruitPos = obj.Position
+                isFruit = true
+            end
+            
+            -- Nếu là trái cây, kiểm tra trong danh sách hiếm
+            if isFruit and fruitName ~= "" then
+                -- Chuẩn hóa tên trái để so sánh
+                local normalizedName = fruitName:gsub("%.Fruit", "-Fruit")
+                normalizedName = normalizedName:gsub(" ", "-")
+                
+                for rareName in pairs(rareFruits) do
+                    if normalizedName:find(rareName) or fruitName:find(rareName:gsub("-Fruit", "")) then
+                        -- Đánh dấu đã thông báo
+                        notifiedFruits[obj] = true
                         
-                        -- KẾT HỢP LỆNH ĐÁNH CỦA BẠN
-                        game:GetService("ReplicatedStorage").Modules.Net["RE/RegisterAttack"]:FireServer(0.5)
-                        
-                        local args = {
-                            [1] = v:FindFirstChild("LeftHand") or v.HumanoidRootPart,
-                            [2] = {},
-                            [4] = "058e045b" -- Mã bảo mật của bạn
+                        -- Tạo thông báo
+                        local fields = {
+                            {
+                                name = "🍎 **TRÁI CÂY HIẾM:**",
+                                value = "```\n" .. fruitName .. "\n```",
+                                inline = true
+                            },
+                            {
+                                name = "💰 **GIÁ TRỊ:**",
+                                value = "```\nTRÊN 1 TRIỆU BELI\n```",
+                                inline = true
+                            },
+                            {
+                                name = "📍 **VỊ TRÍ:**",
+                                value = "```\nX: " .. math.floor(fruitPos.X) .. " | Y: " .. math.floor(fruitPos.Y) .. " | Z: " .. math.floor(fruitPos.Z) .. "\n```",
+                                inline = false
+                            }
                         }
-                        game:GetService("ReplicatedStorage").Modules.Net["RE/RegisterHit"]:FireServer(unpack(args))
                         
-                        task.wait(0.1)
-                    until v.Humanoid.Health <= 0 or not v.Parent
+                        sendToDiscord("🔥 PHÁT HIỆN TRÁI CÂY HIẾM!", 
+                                     "Trái cây giá trị cao vừa xuất hiện!", 
+                                     fields, 16738790, true)
+                        
+                        -- Tự động xóa khỏi danh sách sau 5 phút
+                        task.delay(300, function()
+                            notifiedFruits[obj] = nil
+                        end)
+                        
+                        break
+                    end
                 end
             end
-        end)
-        task.wait(1) -- Đợi 1 giây để quét tìm quái mới
+        end
     end
-end)
+end
+
+-- ================== KIỂM TRA ĐỊNH KỲ ==================
+local function periodicCheck()
+    while task.wait(30) do
+        if not hasNotifiedMelee then
+            checkMelee()
+        end
+        if not hasNotifiedSwords then
+            checkLegendarySwords()
+        end
+    end
+end
+
+-- ================== KHỞI CHẠY SCRIPT ==================
+local function main()
+    print("🚀 Đang khởi động Blox Fruit Notifier...")
+    print("🎯 Chỉ báo trái cây từ 1 TRIỆU trở lên")
+    print("📢 Webhook đã được cấu hình sẵn")
+    
+    -- Đợi game load
+    task.wait(3)
+    
+    -- Chạy các tác vụ
+    task.spawn(checkMelee)
+    task.wait(1)
+    task.spawn(checkLegendarySwords)
+    task.wait(1)
+    task.spawn(scanForRareFruits)
+    task.spawn(periodicCheck)
+    
+    print("✅ Script đã sẵn sàng!")
+end
+
+-- Bắt đầu
+main()
