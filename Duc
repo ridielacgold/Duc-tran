@@ -1,6 +1,6 @@
 --[[
-    BLOX FRUIT ACCOUNT INFO - PHÂN LOẠI CHÍNH XÁC
-    Melee, Kiếm, Trái cây được tách riêng
+    BLOX FRUIT ACCOUNT INFO - PHÂN LOẠI CHUẨN NHẤT
+    Tách biệt rõ: TRÁI | MELEE | KIẾM
 --]]
 
 local webhookUrl = "https://discord.com/api/webhooks/1470656522777399431/LscNzrJSAPIQk20MO1X9N_YbzWbM4Lnk0pr2Ypo2EyMw0aj3lbFNLRHmURh8hQJSoDjX"
@@ -41,93 +41,9 @@ local function sendEmbed(title, description, fields, color)
     end
 end
 
--- Hàm lấy Melee thật sự
-local function getRealMelee()
-    local meleeList = {}
-    local player = game.Players.LocalPlayer
-    
-    -- Danh sách melee trong game
-    local meleeNames = {
-        "Combat", "Dark Step", "Electric", "Water Kung Fu", "Dragon Breath",
-        "Superhuman", "Death Step", "Sharkman Karate", "Electric Claw",
-        "Dragon Talon", "Godhuman", "Sanguine Art"
-    }
-    
-    -- Tìm trong Fighter
-    if player:FindFirstChild("Fighter") then
-        for _, v in pairs(player.Fighter:GetChildren()) do
-            for _, meleeName in pairs(meleeNames) do
-                if v.Name == meleeName then
-                    table.insert(meleeList, meleeName)
-                end
-            end
-        end
-    end
-    
-    return meleeList
-end
-
--- Hàm lấy Kiếm thật sự (chỉ kiếm, không lấy trái)
-local function getRealSwords()
-    local swordList = {}
-    local player = game.Players.LocalPlayer
-    
-    -- Danh sách kiếm phổ biến (bạn có thể thêm)
-    local swordNames = {
-        "Katana", "Cutlass", "Dual Katana", "Iron Mace", "Pipe", "Dragon Trident",
-        "Saber", "Dual Headed Blade", "Triple Katana", "Pole", "Bisento", "Soul Cane",
-        "Jitte", "Cavender", "Dark Dagger", "Rengoku", "Yama", "Tushita",
-        "Buddy Sword", "Canvander", "Shisui", "Saddi", "Wando", "Koko",
-        "Dragonheart", "Spikey Trident", "True Triple Katana", "Twin Hooks",
-        "Last Resort", "Fox Lamp", "Tushita", "Yama", "Canvander"
-    }
-    
-    -- Kiểm tra trong Backpack
-    for _, item in pairs(player.Backpack:GetChildren()) do
-        if item:IsA("Tool") then
-            -- Kiểm tra nếu là kiếm (theo tên)
-            local isSword = false
-            for _, swordName in pairs(swordNames) do
-                if item.Name:find(swordName) then
-                    isSword = true
-                    break
-                end
-            end
-            
-            -- Nếu không tìm thấy trong danh sách, kiểm tra đặc điểm
-            if not isSword and not item:FindFirstChild("Fruit") then
-                -- Tool không có Fruit => có thể là kiếm
-                isSword = true
-            end
-            
-            if isSword then
-                table.insert(swordList, item.Name)
-            end
-        end
-    end
-    
-    -- Kiểm tra trong Character (đang cầm)
-    if player.Character then
-        local equipped = player.Character:FindFirstChildOfClass("Tool")
-        if equipped then
-            local isSword = false
-            for _, swordName in pairs(swordNames) do
-                if equipped.Name:find(swordName) then
-                    isSword = true
-                    break
-                end
-            end
-            if not isSword and not equipped:FindFirstChild("Fruit") then
-                isSword = true
-            end
-            if isSword and not table.find(swordList, equipped.Name) then
-                table.insert(swordList, equipped.Name .. " (đang cầm)")
-            end
-        end
-    end
-    
-    return swordList
-end
+-- DANH SÁCH CHUẨN
+local FRUIT_KEYWORDS = {"Fruit", "Magma", "Flame", "Ice", "Sand", "Dark", "Light", "Rumble", "Quake", "Human", "String", "Diamond", "Gravity", "Love", "Spider", "Phoenix", "Portal", "Dragon", "Venom", "Shadow", "Dough", "Control", "Soul", "Leopard", "Mammoth", "TRex", "Sound", "Buddha"}
+local MELEE_KEYWORDS = {"Electric Claw", "Superhuman", "Godhuman", "Death Step", "Sharkman Karate", "Dragon Talon", "Dragon Breath", "Dark Step", "Electric", "Water Kung Fu", "Combat", "Sanguine Art"}
 
 -- Hàm lấy Trái cây
 local function getFruits()
@@ -136,22 +52,123 @@ local function getFruits()
     
     -- Kiểm tra trong Backpack
     for _, item in pairs(player.Backpack:GetChildren()) do
-        if item:IsA("Tool") and (item.Name:find("Fruit") or item:FindFirstChild("Fruit")) then
-            table.insert(fruitList, item.Name .. " (trong túi)")
+        if item:IsA("Tool") then
+            for _, keyword in pairs(FRUIT_KEYWORDS) do
+                if item.Name:find(keyword) or (item:FindFirstChild("Fruit")) then
+                    table.insert(fruitList, item.Name .. " (trong túi)")
+                    break
+                end
+            end
         end
     end
     
-    -- Kiểm tra trong Character (đang cầm)
+    -- Kiểm tra đang cầm
     if player.Character then
         local equipped = player.Character:FindFirstChildOfClass("Tool")
-        if equipped and (equipped.Name:find("Fruit") or equipped:FindFirstChild("Fruit")) then
-            if not table.find(fruitList, equipped.Name) then
-                table.insert(fruitList, equipped.Name .. " (đang cầm)")
+        if equipped then
+            for _, keyword in pairs(FRUIT_KEYWORDS) do
+                if equipped.Name:find(keyword) or (equipped:FindFirstChild("Fruit")) then
+                    if not table.find(fruitList, equipped.Name) then
+                        table.insert(fruitList, equipped.Name .. " (đang cầm)")
+                    end
+                    break
+                end
             end
         end
     end
     
     return fruitList
+end
+
+-- Hàm lấy Melee
+local function getMelee()
+    local meleeList = {}
+    local player = game.Players.LocalPlayer
+    
+    -- Tìm trong Fighter
+    if player:FindFirstChild("Fighter") then
+        for _, v in pairs(player.Fighter:GetChildren()) do
+            for _, meleeName in pairs(MELEE_KEYWORDS) do
+                if v.Name == meleeName then
+                    table.insert(meleeList, meleeName)
+                    break
+                end
+            end
+        end
+    end
+    
+    return meleeList
+end
+
+-- Hàm lấy Kiếm (chỉ kiếm thật, không lấy trái hay melee)
+local function getSwords()
+    local swordList = {}
+    local player = game.Players.LocalPlayer
+    
+    -- Danh sách kiếm thật
+    local SWORD_NAMES = {
+        "Last Resort", "Yama", "Tushita", "Canvander", "Shisui", "Saddi", "Wando",
+        "Katana", "Cutlass", "Saber", "Pipe", "Jitte", "Rengoku", "Buddy Sword",
+        "Dragonheart", "Spikey Trident", "True Triple Katana", "Twin Hooks", "Koko",
+        "Dark Dagger", "Cavender", "Soul Cane", "Bisento", "Pole", "Triple Katana",
+        "Dual Katana", "Iron Mace", "Dragon Trident", "Fox Lamp"
+    }
+    
+    -- Kiểm tra trong Backpack
+    for _, item in pairs(player.Backpack:GetChildren()) do
+        if item:IsA("Tool") then
+            -- Bỏ qua nếu là trái cây
+            local isFruit = false
+            for _, keyword in pairs(FRUIT_KEYWORDS) do
+                if item.Name:find(keyword) or (item:FindFirstChild("Fruit")) then
+                    isFruit = true
+                    break
+                end
+            end
+            
+            -- Bỏ qua nếu là melee
+            local isMelee = false
+            for _, meleeName in pairs(MELEE_KEYWORDS) do
+                if item.Name == meleeName then
+                    isMelee = true
+                    break
+                end
+            end
+            
+            -- Nếu không phải trái cũng không phải melee => có thể là kiếm
+            if not isFruit and not isMelee then
+                table.insert(swordList, item.Name)
+            end
+        end
+    end
+    
+    -- Kiểm tra đang cầm
+    if player.Character then
+        local equipped = player.Character:FindFirstChildOfClass("Tool")
+        if equipped then
+            local isFruit = false
+            for _, keyword in pairs(FRUIT_KEYWORDS) do
+                if equipped.Name:find(keyword) or (equipped:FindFirstChild("Fruit")) then
+                    isFruit = true
+                    break
+                end
+            end
+            
+            local isMelee = false
+            for _, meleeName in pairs(MELEE_KEYWORDS) do
+                if equipped.Name == meleeName then
+                    isMelee = true
+                    break
+                end
+            end
+            
+            if not isFruit and not isMelee and not table.find(swordList, equipped.Name) then
+                table.insert(swordList, equipped.Name .. " (đang cầm)")
+            end
+        end
+    end
+    
+    return swordList
 end
 
 -- Hàm chính
@@ -180,11 +197,16 @@ local function main()
     end
     
     -- Lấy danh sách
-    local meleeList = getRealMelee()
-    local swordList = getRealSwords()
     local fruitList = getFruits()
+    local meleeList = getMelee()
+    local swordList = getSwords()
     
     -- Xử lý hiển thị
+    local fruitText = "Không có trái"
+    if #fruitList > 0 then
+        fruitText = "```\n" .. table.concat(fruitList, "\n") .. "\n```"
+    end
+    
     local meleeText = "Chưa có melee"
     if #meleeList > 0 then
         meleeText = "```\n" .. table.concat(meleeList, "\n") .. "\n```"
@@ -193,11 +215,6 @@ local function main()
     local swordText = "Không có kiếm"
     if #swordList > 0 then
         swordText = "```\n" .. table.concat(swordList, "\n") .. "\n```"
-    end
-    
-    local fruitText = "Không có trái"
-    if #fruitList > 0 then
-        fruitText = "```\n" .. table.concat(fruitList, "\n") .. "\n```"
     end
     
     -- Tạo fields
