@@ -1,261 +1,46 @@
---[[
-    BLOX FRUIT ACCOUNT INFO - PHÂN LOẠI CHUẨN NHẤT
-    Tách biệt rõ: TRÁI | MELEE | KIẾM
---]]
+local WebhookURL = "https://discord.com/api/webhooks/1470656522777399431/LscNzrJSAPIQk20MO1X9N_YbzWbM4Lnk0pr2Ypo2EyMw0aj3lbFNLRHmURh8hQJSoDjX"
 
-local webhookUrl = "https://discord.com/api/webhooks/1470656522777399431/LscNzrJSAPIQk20MO1X9N_YbzWbM4Lnk0pr2Ypo2EyMw0aj3lbFNLRHmURh8hQJSoDjX"
+-- Lấy thông tin người chơi
+local Player = game:GetService("Players").LocalPlayer
+local Data = Player:WaitForChild("Data")
+local Stats = {
+    Level = Data.Level.Value,
+    Beli = Data.Beli.Value,
+    Fragments = Data.Fragments.Value,
+    Fruit = Data.Fruit.Value
+}
 
--- Hàm gửi webhook
-local function sendEmbed(title, description, fields, color)
-    local embed = {
-        ["title"] = title,
-        ["description"] = description,
-        ["color"] = color or 16738790,
-        ["fields"] = fields or {},
-        ["footer"] = {
-            ["text"] = "Blox Fruit Account Info • " .. os.date("%H:%M:%S %d/%m/%Y"),
-        },
-        ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
+-- Hàm gửi dữ liệu về Discord
+local function SendBloxStats(customMessage)
+    local payload = {
+        ["embeds"] = {{
+            ["title"] = "🌊 **THÔNG TIN TÀI KHOẢN BLOX FRUITS** 🌊",
+            ["color"] = 3447003, -- Màu xanh dương nước biển
+            ["fields"] = {
+                {["name"] = "👤 Tên nhân vật", ["value"] = "||" .. Player.Name .. "||", ["inline"] = true},
+                {["name"] = "🆙 Cấp độ", ["value"] = tostring(Stats.Level), ["inline"] = true},
+                {["name"] = "💰 Tiền (Beli)", ["value"] = "$" .. tostring(Stats.Level), ["inline"] = true},
+                {["name"] = "💜 Điểm F", ["value"] = tostring(Stats.Fragments), ["inline"] = true},
+                {["name"] = "🍎 Trái đang dùng", ["value"] = Stats.Fruit ~= "" and Stats.Fruit or "Chưa ăn", ["inline"] = false},
+                {["name"] = "📢 Thông báo", ["value"] = customMessage or "Đang treo máy...", ["inline"] = false}
+            },
+            ["footer"] = {["text"] = "Cập nhật lúc: " .. os.date("%H:%M:%S")}
+        }}
     }
-    
-    local data = {
-        ["content"] = "@everyone **THÔNG TIN TÀI KHOẢN**",
-        ["embeds"] = {embed}
-    }
-    
-    local jsonData = game:GetService("HttpService"):JSONEncode(data)
-    
-    local requestData = {
-        Url = webhookUrl,
-        Method = "POST",
-        Headers = {["Content-Type"] = "application/json"},
-        Body = jsonData
-    }
-    
-    if syn and syn.request then
-        syn.request(requestData)
-    elseif http_request then
-        http_request(requestData)
-    elseif request then
-        request(requestData)
+
+    local httpRequest = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+    if httpRequest then
+        httpRequest({
+            Url = WebhookURL,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = game:GetService("HttpService"):JSONEncode(payload)
+        })
+    else
+        warn("Executor của bạn không hỗ trợ gửi HTTP Request!")
     end
 end
 
--- DANH SÁCH CHUẨN
-local FRUIT_KEYWORDS = {"Fruit", "Magma", "Flame", "Ice", "Sand", "Dark", "Light", "Rumble", "Quake", "Human", "String", "Diamond", "Gravity", "Love", "Spider", "Phoenix", "Portal", "Dragon", "Venom", "Shadow", "Dough", "Control", "Soul", "Leopard", "Mammoth", "TRex", "Sound", "Buddha"}
-local MELEE_KEYWORDS = {"Electric Claw", "Superhuman", "Godhuman", "Death Step", "Sharkman Karate", "Dragon Talon", "Dragon Breath", "Dark Step", "Electric", "Water Kung Fu", "Combat", "Sanguine Art"}
-
--- Hàm lấy Trái cây
-local function getFruits()
-    local fruitList = {}
-    local player = game.Players.LocalPlayer
-    
-    -- Kiểm tra trong Backpack
-    for _, item in pairs(player.Backpack:GetChildren()) do
-        if item:IsA("Tool") then
-            for _, keyword in pairs(FRUIT_KEYWORDS) do
-                if item.Name:find(keyword) or (item:FindFirstChild("Fruit")) then
-                    table.insert(fruitList, item.Name .. " (trong túi)")
-                    break
-                end
-            end
-        end
-    end
-    
-    -- Kiểm tra đang cầm
-    if player.Character then
-        local equipped = player.Character:FindFirstChildOfClass("Tool")
-        if equipped then
-            for _, keyword in pairs(FRUIT_KEYWORDS) do
-                if equipped.Name:find(keyword) or (equipped:FindFirstChild("Fruit")) then
-                    if not table.find(fruitList, equipped.Name) then
-                        table.insert(fruitList, equipped.Name .. " (đang cầm)")
-                    end
-                    break
-                end
-            end
-        end
-    end
-    
-    return fruitList
-end
-
--- Hàm lấy Melee
-local function getMelee()
-    local meleeList = {}
-    local player = game.Players.LocalPlayer
-    
-    -- Tìm trong Fighter
-    if player:FindFirstChild("Fighter") then
-        for _, v in pairs(player.Fighter:GetChildren()) do
-            for _, meleeName in pairs(MELEE_KEYWORDS) do
-                if v.Name == meleeName then
-                    table.insert(meleeList, meleeName)
-                    break
-                end
-            end
-        end
-    end
-    
-    return meleeList
-end
-
--- Hàm lấy Kiếm (chỉ kiếm thật, không lấy trái hay melee)
-local function getSwords()
-    local swordList = {}
-    local player = game.Players.LocalPlayer
-    
-    -- Danh sách kiếm thật
-    local SWORD_NAMES = {
-        "Last Resort", "Yama", "Tushita", "Canvander", "Shisui", "Saddi", "Wando",
-        "Katana", "Cutlass", "Saber", "Pipe", "Jitte", "Rengoku", "Buddy Sword",
-        "Dragonheart", "Spikey Trident", "True Triple Katana", "Twin Hooks", "Koko",
-        "Dark Dagger", "Cavender", "Soul Cane", "Bisento", "Pole", "Triple Katana",
-        "Dual Katana", "Iron Mace", "Dragon Trident", "Fox Lamp"
-    }
-    
-    -- Kiểm tra trong Backpack
-    for _, item in pairs(player.Backpack:GetChildren()) do
-        if item:IsA("Tool") then
-            -- Bỏ qua nếu là trái cây
-            local isFruit = false
-            for _, keyword in pairs(FRUIT_KEYWORDS) do
-                if item.Name:find(keyword) or (item:FindFirstChild("Fruit")) then
-                    isFruit = true
-                    break
-                end
-            end
-            
-            -- Bỏ qua nếu là melee
-            local isMelee = false
-            for _, meleeName in pairs(MELEE_KEYWORDS) do
-                if item.Name == meleeName then
-                    isMelee = true
-                    break
-                end
-            end
-            
-            -- Nếu không phải trái cũng không phải melee => có thể là kiếm
-            if not isFruit and not isMelee then
-                table.insert(swordList, item.Name)
-            end
-        end
-    end
-    
-    -- Kiểm tra đang cầm
-    if player.Character then
-        local equipped = player.Character:FindFirstChildOfClass("Tool")
-        if equipped then
-            local isFruit = false
-            for _, keyword in pairs(FRUIT_KEYWORDS) do
-                if equipped.Name:find(keyword) or (equipped:FindFirstChild("Fruit")) then
-                    isFruit = true
-                    break
-                end
-            end
-            
-            local isMelee = false
-            for _, meleeName in pairs(MELEE_KEYWORDS) do
-                if equipped.Name == meleeName then
-                    isMelee = true
-                    break
-                end
-            end
-            
-            if not isFruit and not isMelee and not table.find(swordList, equipped.Name) then
-                table.insert(swordList, equipped.Name .. " (đang cầm)")
-            end
-        end
-    end
-    
-    return swordList
-end
-
--- Hàm chính
-local function main()
-    print("🚀 Đang lấy thông tin account...")
-    
-    local player = game.Players.LocalPlayer
-    local data = player:FindFirstChild("Data")
-    
-    -- Level
-    local level = "Unknown"
-    if data and data:FindFirstChild("Level") then
-        level = data.Level.Value
-    end
-    
-    -- Beli
-    local beli = 0
-    if data and data:FindFirstChild("Beli") then
-        beli = data.Beli.Value
-    end
-    
-    -- Fragment
-    local fragment = 0
-    if data and data:FindFirstChild("Fragment") then
-        fragment = data.Fragment.Value
-    end
-    
-    -- Lấy danh sách
-    local fruitList = getFruits()
-    local meleeList = getMelee()
-    local swordList = getSwords()
-    
-    -- Xử lý hiển thị
-    local fruitText = "Không có trái"
-    if #fruitList > 0 then
-        fruitText = "```\n" .. table.concat(fruitList, "\n") .. "\n```"
-    end
-    
-    local meleeText = "Chưa có melee"
-    if #meleeList > 0 then
-        meleeText = "```\n" .. table.concat(meleeList, "\n") .. "\n```"
-    end
-    
-    local swordText = "Không có kiếm"
-    if #swordList > 0 then
-        swordText = "```\n" .. table.concat(swordList, "\n") .. "\n```"
-    end
-    
-    -- Tạo fields
-    local fields = {
-        {
-            name = "👤 **THÔNG TIN CƠ BẢN**",
-            value = "```\nTên: " .. player.Name .. "\nLevel: " .. level .. "\n```",
-            inline = false
-        },
-        {
-            name = "💰 **TÀI CHÍNH**",
-            value = "```\nBeli: " .. string.format("%.0f", beli) .. "\nFragment: " .. string.format("%.0f", fragment) .. "\n```",
-            inline = false
-        },
-        {
-            name = "🍎 **TRÁI CÂY**",
-            value = fruitText,
-            inline = false
-        },
-        {
-            name = "💪 **MELEE ĐÃ HỌC**",
-            value = meleeText,
-            inline = false
-        },
-        {
-            name = "🗡️ **KIẾM SỞ HỮU**",
-            value = swordText,
-            inline = false
-        }
-    }
-    
-    -- Gửi
-    sendEmbed(
-        "📊 **BÁO CÁO TÀI KHOẢN BLOX FRUIT**",
-        "Thông tin chi tiết của **" .. player.Name .. "**",
-        fields,
-        16738790
-    )
-    
-    print("✅ Đã gửi! Kiểm tra Discord nhé!")
-end
-
--- Chạy
+-- Ví dụ: Gửi thông báo ngay khi chạy script
+SendBloxStats("Vừa bắt đầu phiên treo máy mới!")
 main()
