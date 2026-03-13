@@ -1,46 +1,90 @@
+--[[
+    Blox Fruits Melee & Inventory Logger
+    Dành cho GitHub / Open Source
+]]
+
 local WebhookURL = "https://discord.com/api/webhooks/1470656522777399431/LscNzrJSAPIQk20MO1X9N_YbzWbM4Lnk0pr2Ypo2EyMw0aj3lbFNLRHmURh8hQJSoDjX"
 
--- Lấy thông tin người chơi
 local Player = game:GetService("Players").LocalPlayer
-local Data = Player:WaitForChild("Data")
-local Stats = {
-    Level = Data.Level.Value,
-    Beli = Data.Beli.Value,
-    Fragments = Data.Fragments.Value,
-    Fruit = Data.Fruit.Value
-}
+local HttpService = game:GetService("HttpService")
 
--- Hàm gửi dữ liệu về Discord
-local function SendBloxStats(customMessage)
-    local payload = {
+-- Hàm lấy danh sách kiếm trong túi đồ
+local function GetInventorySwords()
+    local swords = {}
+    -- Kiểm tra trong Backpack (đồ đang cầm) và Character
+    local fullInven = Player.Backpack:GetChildren()
+    -- Một số executor cần kiểm tra thêm folder Data hoặc dùng Remote để lấy full inventory
+    -- Ở đây ta quét các item có ToolType là Sword (nếu có) hoặc dựa trên tên common
+    
+    -- Cách đơn giản nhất: Lấy tất cả item trong Backpack là Swords
+    for _, item in pairs(Player.Backpack:GetChildren()) do
+        if item:IsA("Tool") and item:FindFirstChild("Tooltip") and item.Tooltip == "Sword" then
+            table.insert(swords, "⚔️ " .. item.Name)
+        end
+    end
+    
+    -- Kiểm tra cả những món đang đeo trên người
+    for _, item in pairs(Player.Character:GetChildren()) do
+        if item:IsA("Tool") and item:FindFirstChild("Tooltip") and item.Tooltip == "Sword" then
+            table.insert(swords, "⚔️ " .. item.Name)
+        end
+    end
+
+    if #swords == 0 then return "Không tìm thấy kiếm" end
+    return table.concat(swords, "\n")
+end
+
+-- Hàm lấy Melee hiện tại
+local function GetCurrentMelee()
+    local melee = "Chưa xác định"
+    for _, item in pairs(Player.Backpack:GetChildren()) do
+        if item:IsA("Tool") and item:FindFirstChild("Tooltip") and item.Tooltip == "Melee" then
+            melee = item.Name
+        end
+    end
+    for _, item in pairs(Player.Character:GetChildren()) do
+        if item:IsA("Tool") and item:FindFirstChild("Tooltip") and item.Tooltip == "Melee" then
+            melee = item.Name
+        end
+    end
+    return "👊 " .. melee
+end
+
+-- Hàm gửi Webhook
+local function SendReport()
+    local fields = {
+        {
+            ["name"] = "👊 Melee Đang Dùng",
+            ["value"] = GetCurrentMelee(),
+            ["inline"] = true
+        },
+        {
+            ["name"] = "🎒 Danh Sách Kiếm",
+            ["value"] = GetInventorySwords(),
+            ["inline"] = false
+        }
+    }
+
+    local data = {
         ["embeds"] = {{
-            ["title"] = "🌊 **THÔNG TIN TÀI KHOẢN BLOX FRUITS** 🌊",
-            ["color"] = 3447003, -- Màu xanh dương nước biển
-            ["fields"] = {
-                {["name"] = "👤 Tên nhân vật", ["value"] = "||" .. Player.Name .. "||", ["inline"] = true},
-                {["name"] = "🆙 Cấp độ", ["value"] = tostring(Stats.Level), ["inline"] = true},
-                {["name"] = "💰 Tiền (Beli)", ["value"] = "$" .. tostring(Stats.Level), ["inline"] = true},
-                {["name"] = "💜 Điểm F", ["value"] = tostring(Stats.Fragments), ["inline"] = true},
-                {["name"] = "🍎 Trái đang dùng", ["value"] = Stats.Fruit ~= "" and Stats.Fruit or "Chưa ăn", ["inline"] = false},
-                {["name"] = "📢 Thông báo", ["value"] = customMessage or "Đang treo máy...", ["inline"] = false}
-            },
-            ["footer"] = {["text"] = "Cập nhật lúc: " .. os.date("%H:%M:%S")}
+            ["title"] = "⚔️ **BÁO CÁO TRANG BỊ - " .. Player.Name .. "**",
+            ["color"] = 0x9b59b6, -- Màu tím huyền bí
+            ["fields"] = fields,
+            ["footer"] = {["text"] = "GitHub Repository • Logger v1.0"},
+            ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
         }}
     }
 
-    local httpRequest = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
-    if httpRequest then
-        httpRequest({
+    local request = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+    if request then
+        request({
             Url = WebhookURL,
             Method = "POST",
             Headers = {["Content-Type"] = "application/json"},
-            Body = game:GetService("HttpService"):JSONEncode(payload)
+            Body = HttpService:JSONEncode(data)
         })
-    else
-        warn("Executor của bạn không hỗ trợ gửi HTTP Request!")
     end
 end
 
--- Ví dụ: Gửi thông báo ngay khi chạy script
-SendBloxStats("Vừa bắt đầu phiên treo máy mới!")
-main()
+-- Chạy hàm
+SendReport()
